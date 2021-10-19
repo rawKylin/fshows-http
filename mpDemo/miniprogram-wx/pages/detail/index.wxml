@@ -1,0 +1,6 @@
+<!--index.wxml-->
+<view class="container">
+  <view class="usermotto" bindtap="getData">
+    <button class="user-motto">请求接口</button>
+  </view>
+</view>

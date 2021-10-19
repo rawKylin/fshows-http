@@ -1,0 +1,5 @@
+
+<view>
+  <button class="btn" size="default" type="primary" onTap="handleLog">日志上报</button>
+  <button class="btn" size="default" type="primary" onTap="changeMode">change mode</button>
+</view>

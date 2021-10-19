@@ -1,0 +1,7 @@
+<!--index.wxml-->
+<view class="container">
+  <view class="usermotto" >
+    <button class="user-motto" bindtap="getData">请求接口</button>
+    <button class="user-motto"  bindtap="goDetail">详情页</button>
+  </view>
+</view>
