@@ -7,7 +7,7 @@ import json from '@rollup/plugin-json'
 
 const pkg = require('./package.json')
 
-const libraryName = 'fslogger'
+const libraryName = 'fsHttp'
 
 export default {
   input: `src/index.ts`,
