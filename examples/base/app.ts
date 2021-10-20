@@ -30,11 +30,9 @@ fsHttp.setSignParams(signParams)
 fsHttp.setAxiosTimeout(5000)
 fsHttp2.setSignParams(signParams2)
 fsHttp2.setAxiosTimeout(5000)
-fsHttp.customErrorHandle = (result, reqData, reject)=>{
+fsHttp.customErrorHandle = (result, reqData, reqOptions)=>{
   console.log('没事跑个错误')
-  reject({
-    errorMsg:'自定义抛错'
-  })
+  
 }
 /**
  * result 接口返回结果
