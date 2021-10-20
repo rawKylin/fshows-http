@@ -1,8 +1,8 @@
 {
   "name": "fshows-http",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "",
-  "miniprogram": "dist/index",
+  "miniprogram": "dist",
   "keywords": [],
   "main": "dist/index.js",
   "module": "dist/index.es5.js",
