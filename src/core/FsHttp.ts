@@ -1,5 +1,6 @@
 import Axios, { AxiosInstance, AxiosResponse, AxiosError, Canceler } from 'axios'
 import md5 from 'md5'
+import Cookies from 'js-cookie'
 import qs from 'qs'
 import { ISignConfig, IReqOptions } from '../types'
 
@@ -8,7 +9,7 @@ const CancelToken = Axios.CancelToken
 
 class HttpService {
   // axios请求实例
-  public axios: AxiosInstance
+  public axios: AxiosInstance | undefined
   public requestCancelMap: AnyObject
   public signParams: ISignConfig = {
     appid: 'MINA-APPID',
@@ -19,6 +20,7 @@ class HttpService {
 
   public axiosTimeout: number = 10000 // 单位ms
   public getDataInstance: Function
+  public cookieTokenName: string = 'token' // 存放在cookies中的token参数名称
 
   /**
    * @func 用户自定义错误处理函数
@@ -33,20 +35,14 @@ class HttpService {
   public retryTimes = 1
 
   constructor(signParams: ISignConfig | undefined) {
-    this.axios = Axios.create({
-      timeout: this.axiosTimeout
-    })
-    // 用来取消请求
+    // 用来取消请求 web端
     this.requestCancelMap = {}
-    // 请求拦截
-    this.requsetInterceptor()
-    // 响应拦截
-    this.responseInterceptor()
     // 设置签名参数
     signParams && this.setSignParams(signParams)
     // 设置请求数据实例
     switch (this.getEnv()) {
       case 'web':
+        this.initAxios()
         this.getDataInstance = this.requestAxios
         break
       case 'wxapp':
@@ -64,6 +60,19 @@ class HttpService {
   setSignParams(signParams: ISignConfig) {
     this.signParams = signParams
   }
+  initAxios() {
+    this.axios = Axios.create({
+      timeout: this.axiosTimeout
+    })
+
+    // 请求拦截
+    this.requsetInterceptor()
+    // 响应拦截
+    this.responseInterceptor()
+  }
+  setTokenName(cookieTokenName: string) {
+    this.cookieTokenName = cookieTokenName
+  }
   setAxiosTimeout(axiosTimeout: number) {
     if (this.getEnv() === 'web') {
       Axios.defaults.timeout = axiosTimeout
@@ -77,10 +86,23 @@ class HttpService {
    */
 
   request(reqOptions: IReqOptions): Promise<any> {
-    const reqData = qs.stringify(this.handleParams(reqOptions.data, reqOptions.url))
+    const reqObj = this.handleParams(
+      reqOptions.data,
+      reqOptions.url,
+      reqOptions.sendRawData,
+      reqOptions.formatType
+    )
+
+    const reqData = reqObj.data
+    const headers = reqObj.headers
     const { retryTimes = 1 } = reqOptions
+    let url = reqOptions.baseUrl
+    if (reqOptions.sendRawData) {
+      url += reqOptions.url
+    }
+
     return new Promise((resolve, reject) => {
-      this.getData(reqOptions, reqData, retryTimes, resolve, reject)
+      this.getData(reqOptions, reqData, retryTimes, resolve, reject, headers, url)
     })
   }
   /**
@@ -88,10 +110,18 @@ class HttpService {
    * @param {object} reqOptions 请求参数 {object} reqData 处理之后的参数, {number} retryTimes 重试次数, {promise.resolve} resolve, {promise.reject} reject
    */
 
-  getData(reqOptions: object, reqData: any, retryTimes: number, resolve: any, reject: any) {
+  getData(
+    reqOptions: object,
+    reqData: any,
+    retryTimes: number,
+    resolve: any,
+    reject: any,
+    headers: any,
+    url: string
+  ) {
     --retryTimes
     this.retryTimes = retryTimes
-    this.getDataInstance(reqOptions, reqData, retryTimes, resolve, reject)
+    this.getDataInstance(reqOptions, reqData, retryTimes, resolve, reject, headers, url)
   }
   /**
    * 获取当前环境
@@ -121,19 +151,35 @@ class HttpService {
     reqData: any,
     retryTimes: number,
     resolve: any,
-    reject: any
+    reject: any,
+    headers: any,
+    url: string
   ) {
-    this.axios
-      .post(reqOptions.baseUrl, reqData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-        }
+    let axiosInstance
+    if (reqOptions.method === 'GET') {
+      // axiosInstance =(this.axios as AxiosInstance).get(`${url}?${typeof reqData === 'string' ? reqData : qs.stringify(reqData)  }`)
+      axiosInstance = (this.axios as AxiosInstance).get(url, { params: reqOptions.data })
+      console.log(reqData, 'reqData')
+    } else {
+      axiosInstance = (this.axios as AxiosInstance).post(url, reqData, {
+        headers
       })
+    }
+    axiosInstance
       .then((response: AxiosResponse) => {
-        this.successFn(response || {}, reqOptions, reqData, retryTimes, resolve, reject)
+        this.successFn(
+          response || {},
+          reqOptions,
+          reqData,
+          retryTimes,
+          resolve,
+          reject,
+          headers,
+          url
+        )
       })
       .catch((error: AxiosError) => {
-        this.errorFn(error, reqOptions, reqData, retryTimes, resolve, reject)
+        this.errorFn(error, reqOptions, reqData, retryTimes, resolve, reject, headers, url)
       })
   }
   /**
@@ -141,19 +187,34 @@ class HttpService {
    * @param {object} reqOptions 请求参数 {object} reqData 处理之后的参数, {number} retryTimes 重试次数, {promise.resolve} resolve, {promise.reject} reject
    */
 
-  requestWx(reqOptions: IReqOptions, reqData: any, retryTimes: number, resolve: any, reject: any) {
+  requestWx(
+    reqOptions: IReqOptions,
+    reqData: any,
+    retryTimes: number,
+    resolve: any,
+    reject: any,
+    header: any,
+    url: string
+  ) {
     wx.request({
-      url: reqOptions.baseUrl,
+      url,
       method: reqOptions.method || 'POST',
       data: reqData,
-      header: {
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-      },
+      header,
       success: (response: any) => {
-        this.successFn(response.data || {}, reqOptions, reqData, retryTimes, resolve, reject)
+        this.successFn(
+          response.data || {},
+          reqOptions,
+          reqData,
+          retryTimes,
+          resolve,
+          reject,
+          header,
+          url
+        )
       },
       fail: (error: any) => {
-        this.errorFn(error, reqOptions, reqData, retryTimes, resolve, reject)
+        this.errorFn(error, reqOptions, reqData, retryTimes, resolve, reject, header, url)
       }
     })
   }
@@ -167,21 +228,30 @@ class HttpService {
     reqData: any,
     retryTimes: number,
     resolve: any,
-    reject: any
+    reject: any,
+    headers: any,
+    url: string
   ) {
     my.request({
-      headers: {
-        'content-type': 'application/x-www-form-urlencoded'
-      },
+      headers,
       method: reqOptions.method || 'POST',
       data: reqData,
-      url: reqOptions.baseUrl,
+      url,
       dataType: 'json',
       success: (response: any) => {
-        this.successFn(response.data, reqOptions, reqData, retryTimes, resolve, reject)
+        this.successFn(
+          response.data,
+          reqOptions,
+          reqData,
+          retryTimes,
+          resolve,
+          reject,
+          headers,
+          url
+        )
       },
       fail: (error: any) => {
-        this.errorFn(error, reqOptions, reqData, retryTimes, resolve, reject)
+        this.errorFn(error, reqOptions, reqData, retryTimes, resolve, reject, headers, url)
       }
     })
   }
@@ -196,7 +266,9 @@ class HttpService {
     reqData: any,
     retryTimes: number,
     resolve: any,
-    reject: any
+    reject: any,
+    headers: any,
+    url: string
   ) {
     if (result.success) {
       this.hideLoading(reqOptions.hasToast)
@@ -205,7 +277,7 @@ class HttpService {
       this.customSuccessHandle && this.customSuccessHandle(result, reqData, reqOptions)
     } else {
       if (retryTimes > 0) {
-        this.getData(reqOptions, reqData, retryTimes, resolve, reject)
+        this.getData(reqOptions, reqData, retryTimes, resolve, reject, headers, url)
       } else {
         if (this.customErrorHandle && typeof this.customErrorHandle === 'function') {
           this.customErrorHandle(result, reqData, reqOptions)
@@ -226,10 +298,12 @@ class HttpService {
     reqData: any,
     retryTimes: number,
     resolve: any,
-    reject: any
+    reject: any,
+    headers: any,
+    url: string
   ) {
     if (retryTimes > 0) {
-      this.getData(reqOptions, reqData, retryTimes, resolve, reject)
+      this.getData(reqOptions, reqData, retryTimes, resolve, reject, headers, url)
     } else {
       if (this.customErrorHandle && typeof this.customErrorHandle === 'function') {
         this.customErrorHandle(error, reqData, reqOptions)
@@ -251,9 +325,9 @@ class HttpService {
 
   // web端 aixos请求拦截
   requsetInterceptor() {
-    const { axios, requestCancelMap, retryTimes } = this
-    axios.interceptors.request.use(
-      config => {
+    const { requestCancelMap, retryTimes, cookieTokenName } = this
+    ;(this.axios as AxiosInstance).interceptors.request.use(
+      (config: any) => {
         // 请求参数字符串，如果是object则强转string
         const requestDataStr =
           typeof config.data === 'string' ? config.data : JSON.stringify(config.data)
@@ -268,17 +342,20 @@ class HttpService {
             requestCancelMap[requestName].cancel = cancel
           })
         }
+        if (Cookies.get(cookieTokenName)) {
+          config.headers.Authorization = Cookies.get(cookieTokenName)
+        }
 
         return config
       },
-      error => {
+      (error: any) => {
         return Promise.reject(error)
       }
     )
   }
   // web端 axios响应拦截
   responseInterceptor() {
-    this.axios.interceptors.response.use(
+    ;(this.axios as AxiosInstance).interceptors.response.use(
       response => {
         // this.responseLog(response)
         return response.data
@@ -293,13 +370,63 @@ class HttpService {
    * @func 服务端签名
    * @param {object} options 请求参数
    */
-  handleParams(obj: AnyObject, method: string) {
-    const params = { ...this.signParams, method }
-    params.content = JSON.stringify(obj || {})
-    const body = JSON.stringify(params).replace(/\\/g, '') // 加密的时候需要去掉反斜杠
-    params.sign = md5(body)
-    if (params.salt) delete params.salt
-    return params
+  handleParams(
+    obj: AnyObject,
+    method: string,
+    sendRawData: boolean | undefined,
+    formatType: string | undefined
+  ) {
+    console.log(obj, method, sendRawData, 'sendRawData', formatType)
+
+    let data = {}
+    let headers = {}
+    if (sendRawData) {
+      switch (formatType) {
+        case 'json':
+          headers = {
+            'Content-Type': 'application/json;charset=UTF-8'
+          }
+          data = obj
+          break
+        case 'formdata': {
+          const formData = new FormData()
+          Object.keys(obj).forEach(key => {
+            if (key === 'files') {
+              obj[key].forEach((i: any) => {
+                formData.append('files', i)
+              })
+            } else if (obj[key] != null) {
+              formData.append(key, obj[key])
+            }
+          })
+          headers = { 'Content-type': 'multipart/formdata;charset=UTF-8' }
+          data = formData
+          break
+        }
+        case 'qs':
+          headers = { 'Content-type': 'application/x-www-form-urlencoded;charset=UTF-8' }
+          data = qs.stringify(obj)
+          break
+        case 'form-urlencoded':
+        default:
+          headers = { 'Content-type': 'application/x-www-form-urlencoded;charset=UTF-8' }
+          data = obj
+          break
+      }
+    } else {
+      const params = { ...this.signParams, method }
+      params.content = JSON.stringify(obj || {})
+      const body = JSON.stringify(params).replace(/\\/g, '') // 加密的时候需要去掉反斜杠
+      params.sign = md5(body)
+      if (params.salt) delete params.salt
+      data = qs.stringify(params)
+      headers = { 'Content-type': 'application/x-www-form-urlencoded;charset=UTF-8' }
+    }
+
+    return {
+      data,
+      headers
+    }
   }
 
   /**

@@ -26,6 +26,18 @@ const reqOptions: IReqOptions = {
   method: 'POST',
   retryTimes:3,
 }
+const reqOptions2: IReqOptions = {
+  data:{
+    customerId: "78hhdsjdsh",
+    receiptId: "202109221412023121669592227",
+  },
+  url: "receipt.minaapp.receipt.home",
+  baseUrl:'https://lifecircle-minagw-test.51youdian.com/gateway/',
+  method: 'POST',
+  sendRawData: true,
+  formatType: 'qs',
+  retryTimes:3,
+}
 fsHttp.setSignParams(signParams)
 fsHttp.setAxiosTimeout(5000)
 fsHttp2.setSignParams(signParams2)
@@ -51,9 +63,11 @@ btnEl!.addEventListener('click', e => {
   }).catch(err=>{
     resultEl.innerHTML = err.errorMsg
   })
-  // fsHttp2.request(reqOptions).then(res=>{
-  //   resultEl.innerHTML = JSON.stringify(res)
-  // }).catch(err=>{
-  //   resultEl.innerHTML = err.errorMsg
-  // })
+  console.log(reqOptions2,'reqOptions2');
+  
+  fsHttp2.request(reqOptions2).then(res=>{
+    resultEl.innerHTML = JSON.stringify(res)
+  }).catch(err=>{
+    resultEl.innerHTML = err.errorMsg
+  })
 })
