@@ -18,9 +18,9 @@ class HttpService {
     version: '1.0.0'
   }
 
-  public axiosTimeout: number = 10000 // 单位ms
-  public getDataInstance: Function
-  public cookieTokenName: string = 'token' // 存放在cookies中的token参数名称
+  public axiosTimeout: number = 10000 // axios 超时时间 单位ms
+  public getDataInstance: Function // 请求实例
+  public cookieTokenName: string = 'accessToken' // 存放在cookies中的token参数名称
 
   /**
    * @func 用户自定义错误处理函数
@@ -32,7 +32,7 @@ class HttpService {
   // 用户自定义日志上报函数
   public customSuccessHandle: Function | undefined
 
-  public retryTimes = 1
+  public retryTimes = 1 // 请求次数
 
   constructor(signParams: ISignConfig | undefined) {
     // 用来取消请求 web端
@@ -107,7 +107,7 @@ class HttpService {
   }
   /**
    * @func 获取数据
-   * @param {object} reqOptions 请求参数 {object} reqData 处理之后的参数, {number} retryTimes 重试次数, {promise.resolve} resolve, {promise.reject} reject
+   * @param {object} reqOptions 请求参数 {object} reqData 处理之后的参数, {number} retryTimes 重试次数, {promise.resolve} resolve, {promise.reject} reject headers 请求方式 url 接口地址
    */
 
   getData(
@@ -157,7 +157,6 @@ class HttpService {
   ) {
     let axiosInstance
     if (reqOptions.method === 'GET') {
-      // axiosInstance =(this.axios as AxiosInstance).get(`${url}?${typeof reqData === 'string' ? reqData : qs.stringify(reqData)  }`)
       axiosInstance = (this.axios as AxiosInstance).get(url, { params: reqOptions.data })
       console.log(reqData, 'reqData')
     } else {
@@ -343,7 +342,7 @@ class HttpService {
           })
         }
         if (Cookies.get(cookieTokenName)) {
-          config.headers.Authorization = Cookies.get(cookieTokenName)
+          config.headers[cookieTokenName] = Cookies.get(cookieTokenName)
         }
 
         return config
@@ -376,8 +375,6 @@ class HttpService {
     sendRawData: boolean | undefined,
     formatType: string | undefined
   ) {
-    console.log(obj, method, sendRawData, 'sendRawData', formatType)
-
     let data = {}
     let headers = {}
     if (sendRawData) {
