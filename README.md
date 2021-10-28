@@ -12,6 +12,9 @@ npm install fshows-http --save
 
 ```javascript
 import FsHttp from 'fshows-http'
+import Cookies from 'js-cookie'
+Cookies.set('token', '4eff3d548fd740eab75f3349f983e377')
+// 加盐
 const fsHttp1 = new FsHttp({
   appid: 'java-test',
   content: '',
@@ -32,7 +35,7 @@ fsHttp1.customSuccessHandle = (result, reqData, reqOptionst) => {
   console.log('可以在此，上报日志')
 }
 // 自定义失败函数 通用
-fsHttp.customErrorHandle = (result, reqData, reject) => {
+fsHttp1.customErrorHandle = (result, reqData, reject) => {
   console.log('没事跑个错误')
   reject({
     errorMsg: '自定义抛错'
@@ -56,8 +59,29 @@ fsHttp1
     url: 'com.fshows.lifecircle.look.around',
     baseUrl: 'https://lifecircle-minagw-test.51youdian.com/mobile/gateway',
     method: 'POST',
-    retryTimes: 3,
-    hasToast: true
+    retryTimes: 3
+  })
+  .then(res => {})
+  .catch(err => {})
+fsHttp2.setTokenName('token') // 设置存放在cookies中的token名称 请求常规接口或mock数据时验签
+fsHttp2
+  .request({
+    data: {
+      storeId: 95011991,
+      customerId: 'xxxxxxxxx',
+      qrcode: '2ecf5e2599804f4788d6b0643e53d53f',
+      page: 1,
+      pageSize: 8,
+      accessToken: 'ea788c04a53049859269cbb1dec5da16',
+      templateProgram: 2,
+      minaPlatform: 1,
+      uid: '3209834'
+    },
+    url: 'com.fshows.lifecircle.look.around',
+    baseUrl: 'api/',
+    method: 'POST',
+    formatType: 'json', // 请求格式类型 json/formdata/qs/form-urlencoded
+    retryTimes: 3
   })
   .then(res => {})
   .catch(err => {})
@@ -77,6 +101,7 @@ fsHttp1
   - baseUrl 基础 url 地址 必传
   - url 接口地址 必传
   - method 请求方式 'POST'|'GET'|undefined 非必传
+  - formatType 数据格式 json 请求头部设置为{'Content-Type': 'application/json;charset=UTF-8'}; formdata {'Content-type': 'multipart/formdata;charset=UTF-8'}; form-urlencoded { 'Content-type': 'application/x-www-form-urlencoded;charset=UTF-8' }
   - data 请求数据
   - retryTimes 请求次数，当接口异常时自动重新请求 非必传 默认值为 1
   - hasToast 是否有 toast 微信/支付宝小程序环境有效 接口返回值后 若 hasToast 为 true 关闭 toast 弹窗

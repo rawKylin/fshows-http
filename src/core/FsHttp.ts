@@ -34,7 +34,7 @@ class HttpService {
 
   public retryTimes = 1 // 请求次数
 
-  constructor(signParams: ISignConfig | undefined) {
+  constructor(signParams?: ISignConfig) {
     // 用来取消请求 web端
     this.requestCancelMap = {}
     // 设置签名参数
@@ -400,14 +400,10 @@ class HttpService {
           data = formData
           break
         }
-        case 'qs':
-          headers = { 'Content-type': 'application/x-www-form-urlencoded;charset=UTF-8' }
-          data = qs.stringify(obj)
-          break
         case 'form-urlencoded':
         default:
           headers = { 'Content-type': 'application/x-www-form-urlencoded;charset=UTF-8' }
-          data = obj
+          data = qs.stringify(obj)
           break
       }
     } else {

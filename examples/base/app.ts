@@ -1,5 +1,7 @@
 import FsHttp from '../../src/index'
 import {ISignConfig, IReqOptions} from '../../src/types'
+import Cookies from 'js-cookie'
+Cookies.set('token','4eff3d548fd740eab75f3349f983e377')
 // import FsLogger from 'fshows-logger'
 
 const signParams: ISignConfig = { 
@@ -8,14 +10,8 @@ const signParams: ISignConfig = {
   salt: 'xxxxxxxx', // 加盐 加密完之后需要从params删除
   version: '1.0.0'
 }
-const signParams2: ISignConfig = { 
-  appid: 'MINA-APPID',
-  content: '',
-  salt: 'yyyyyy', // 加盐 加密完之后需要从params删除
-  version: '1.0.0'
-}
 const fsHttp = new FsHttp(signParams)
-const fsHttp2 = new FsHttp(signParams2)
+const fsHttp2 = new FsHttp()
 const reqOptions: IReqOptions = {
   data:{
     customerId: "78hhdsjdsh",
@@ -31,17 +27,18 @@ const reqOptions2: IReqOptions = {
     customerId: "78hhdsjdsh",
     receiptId: "202109221412023121669592227",
   },
-  url: "receipt.minaapp.receipt.home",
-  baseUrl:'https://lifecircle-minagw-test.51youdian.com/gateway/',
+  url: "browse/keyword/fshows-http",
+  baseUrl:'api/',
   method: 'POST',
   sendRawData: true,
-  formatType: 'qs',
+  formatType: 'json',
   retryTimes:3,
 }
+
 fsHttp.setSignParams(signParams)
 fsHttp.setAxiosTimeout(5000)
-fsHttp2.setSignParams(signParams2)
 fsHttp2.setAxiosTimeout(5000)
+fsHttp2.setTokenName('token')
 fsHttp.customErrorHandle = (result, reqData, reqOptions)=>{
   console.log('没事跑个错误')
   
@@ -66,6 +63,8 @@ btnEl!.addEventListener('click', e => {
   console.log(reqOptions2,'reqOptions2');
   
   fsHttp2.request(reqOptions2).then(res=>{
+    console.log(res,'sssssss');
+    
     resultEl.innerHTML = JSON.stringify(res)
   }).catch(err=>{
     resultEl.innerHTML = err.errorMsg
